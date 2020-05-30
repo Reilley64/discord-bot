@@ -89,8 +89,11 @@ discordClient
                   if (transcription.includes('play')) {
                     const [, query] = transcription.split('play');
                     search(query);
-                  } else if (transcription.includes('skip')) {
-                    skip();
+                  } else if (transcription.includes('skip')) skip();
+                  else if (transcription.includes('pause')) {
+                    if (dispatcher) dispatcher.pause();
+                  } else if (transcription.includes('resume')) {
+                    if (dispatcher) dispatcher.resume();
                   }
                 }
               });
