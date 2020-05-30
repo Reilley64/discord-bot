@@ -28,6 +28,16 @@ const play = () => {
   queue.shift();
 };
 
+const search = (query) => ytsearch(query, (error, result) => {
+  if (error) console.error(error);
+  else if (result.videos && result.videos[0]) {
+    queue.push({ title: result.videos[0].title, url: result.videos[0].url });
+    if (!dispatcher) play();
+  }
+});
+
+const skip = () => { if (dispatcher) dispatcher.end(); };
+
 discordClient.login(process.env.DISCORD_TOKEN);
 
 discordClient
@@ -57,16 +67,10 @@ discordClient
 
                 if (transcription.includes('ok discord')) {
                   if (transcription.includes('play')) {
-                    const [, search] = transcription.split('play');
-                    ytsearch(search, (error, result) => {
-                      if (error) console.error(error);
-                      else if (result.videos && result.videos[0]) {
-                        queue.push({ title: result.videos[0].title, url: result.videos[0].url });
-                        if (!dispatcher) play();
-                      }
-                    });
+                    const [, query] = transcription.split('play');
+                    search(query);
                   } else if (transcription.includes('skip')) {
-                    if (dispatcher) dispatcher.end();
+                    skip();
                   }
                 }
               });
@@ -81,8 +85,12 @@ discordClient
         message.member.voice.channel.leave();
         break;
 
+      case '/skip':
+        skip();
+        break;
+
       case '/queue':
-        let queueMessage = '';
+        let queueMessage = ' ';
         if (queue.length < 1) queueMessage = 'No songs have been queued';
         else for (const song of queue) queueMessage += `\n${song.title} | ${song.url}`;
         message.channel.send(queueMessage);
