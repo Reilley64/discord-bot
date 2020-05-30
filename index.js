@@ -27,7 +27,7 @@ discordClient
             const audioStream = connection.receiver.createStream(user, { mode: 'pcm' });
             const recognizeStream = googleSpeechClient
               .streamingRecognize({
-                config: { encoding: 'LINEAR16', sampleRateHertz: 48000, languageCode: 'en-US' },
+                config: { encoding: 'LINEAR16', sampleRateHertz: 48000, languageCode: 'en-AU' },
               })
               .on('error', console.error)
               .on('data', (response) => {
