@@ -1,7 +1,9 @@
 require('dotenv').config();
 
 const GoogleSpeech = require('@google-cloud/speech');
+const GoogleTextToSpeech = require('@google-cloud/text-to-speech');
 const Discord = require('discord.js');
+const fs = require('fs');
 const ytdl = require('ytdl-core');
 const ytsearch = require('yt-search');
 const ConvertTo1ChannelStream = require('./classes/ConvertTo1ChannelStream');
@@ -9,6 +11,7 @@ const Silence = require('./classes/Silence');
 
 const discordClient = new Discord.Client();
 const googleSpeechClient = new GoogleSpeech.SpeechClient();
+const googleTextToSpeechClient = new GoogleTextToSpeech.TextToSpeechClient();
 
 const queue = [];
 
@@ -28,11 +31,28 @@ const play = () => {
   queue.shift();
 };
 
-const search = (query) => ytsearch(query, (error, result) => {
-  if (error) console.error(error);
+const search = (query) => ytsearch(query, (searchError, result) => {
+  if (searchError) console.error(searchError);
   else if (result.videos && result.videos[0]) {
     queue.push({ title: result.videos[0].title, url: result.videos[0].url });
-    if (!dispatcher) play();
+    if (!dispatcher) {
+      googleTextToSpeechClient.synthesizeSpeech({
+        input: { text: `ok, playing ${result.videos[0].title}` },
+        voice: { languageCode: 'en-AU' },
+        audioConfig: { audioEncoding: 'MP3' },
+      })
+        .then((response) => {
+          fs.writeFile('output.mp3', response[0].audioContent, 'binary', (writeError) => {
+            if (writeError) console.error(writeError);
+            else {
+              const textToSpeechDispatch = connection.play(`file:///${__dirname}/output.mp3`);
+              textToSpeechDispatch.on('finish', () => {
+                play();
+              });
+            }
+          });
+        });
+    }
   }
 });
 

@@ -9,6 +9,7 @@ yarn.lock
 .env.test.local
 .env.production.local
 google-credentials.json
+output.mp3
 
 # IntelliJ Idea
 .idea
