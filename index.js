@@ -26,7 +26,7 @@ const play = () => {
     else { dispatcher = null; }
   });
 
-  discordClient.user.setPresence({ activity: { name: queue[0].title, type: 'PLAYING' } });
+  discordClient.user.setPresence({ activity: { name: queue[0].title, type: 'CUSTOM_STATUS' } });
 
   queue.shift();
 };
