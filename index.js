@@ -97,6 +97,16 @@ discordClient
         break;
 
       default:
+        if (message.content.includes('/play')) {
+          if (connection) {
+            const split = message.content.split(' ');
+            if (split[1]) {
+              const query = split.filter((part, i) => i !== 0).join(' ');
+              search(query);
+            }
+          }
+        }
+
         break;
     }
   });
