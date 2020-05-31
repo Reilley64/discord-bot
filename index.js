@@ -19,11 +19,11 @@ let connection;
 let dispatcher;
 
 const play = () => {
-  dispatcher = connection.play(ytdl(queue[0].url, { filter: 'audioonly', highWaterMark: 1<<25 }));
+  dispatcher = connection.play(ytdl(queue[0].url, { filter: 'audioonly', highWaterMark: 1 << 25 }));
 
   dispatcher.on('finish', () => {
     if (queue.length > 0) play();
-    else { dispatcher = null };
+    else { dispatcher = null; }
   });
 
   discordClient.user.setPresence({ activity: { name: queue[0].title, type: 'PLAYING' } });
@@ -52,7 +52,7 @@ const search = (query) => ytsearch(query, (searchError, result) => {
             }
           });
         })
-		.then((error) => console.error('error:', error));
+        .then((error) => console.error('error:', error));
     }
   }
 });

@@ -4,6 +4,7 @@
     "node": true
   },
   "rules": {
+    "no-bitwise": "off",
     "no-case-declarations": "off",
     "no-restricted-syntax": "off"
   }
