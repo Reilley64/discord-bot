@@ -19,11 +19,11 @@ let connection;
 let dispatcher;
 
 const play = () => {
-  dispatcher = connection.play(ytdl(queue[0].url, { filter: 'audioonly' }));
+  dispatcher = connection.play(ytdl(queue[0].url, { filter: 'audioonly', highWaterMark: 1<<25 }));
 
   dispatcher.on('finish', () => {
     if (queue.length > 0) play();
-    else dispatcher = null;
+    else { dispatcher = null };
   });
 
   discordClient.user.setPresence({ activity: { name: queue[0].title, type: 'PLAYING' } });
@@ -32,7 +32,7 @@ const play = () => {
 };
 
 const search = (query) => ytsearch(query, (searchError, result) => {
-  if (searchError) console.error(searchError);
+  if (searchError) console.error('error:', searchError);
   else if (result.videos && result.videos[0]) {
     queue.push({ title: result.videos[0].title, url: result.videos[0].url });
     if (!dispatcher) {
@@ -43,7 +43,7 @@ const search = (query) => ytsearch(query, (searchError, result) => {
       })
         .then((response) => {
           fs.writeFile('output.mp3', response[0].audioContent, 'binary', (writeError) => {
-            if (writeError) console.error(writeError);
+            if (writeError) console.error('error:', writeError);
             else {
               const textToSpeechDispatch = connection.play(`file:///${__dirname}/output.mp3`);
               textToSpeechDispatch.on('finish', () => {
@@ -51,7 +51,8 @@ const search = (query) => ytsearch(query, (searchError, result) => {
               });
             }
           });
-        });
+        })
+		.then((error) => console.error('error:', error));
     }
   }
 });
@@ -61,7 +62,7 @@ const skip = () => { if (dispatcher) dispatcher.end(); };
 discordClient.login(process.env.DISCORD_TOKEN);
 
 discordClient
-  .on('ready', () => console.log('Bot ready'))
+  .on('ready', () => console.log('Bot online'))
   .on('message', async (message) => {
     switch (message.content) {
       case '/join':
@@ -77,7 +78,7 @@ discordClient
               .streamingRecognize({
                 config: { encoding: 'LINEAR16', sampleRateHertz: 48000, languageCode: 'en-AU' },
               })
-              .on('error', console.error)
+              .on('error', (error) => console.error('error:', error))
               .on('data', (response) => {
                 const transcription = response.results
                   .map((result) => result.alternatives[0].transcript)
