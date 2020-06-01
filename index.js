@@ -1,17 +1,14 @@
 require('dotenv').config();
 
-const GoogleSpeech = require('@google-cloud/speech');
 const GoogleTextToSpeech = require('@google-cloud/text-to-speech');
 const Discord = require('discord.js');
 const fs = require('fs');
 const ytdl = require('ytdl-core');
 const ytsearch = require('yt-search');
-const ConvertTo1ChannelStream = require('./classes/ConvertTo1ChannelStream');
-const ConvertToWav = require('./classes/ConvertToWav');
+const Detector = require('./lib/native-voice-command-detector');
 const Silence = require('./classes/Silence');
 
 const discordClient = new Discord.Client();
-const googleSpeechClient = new GoogleSpeech.SpeechClient();
 const googleTextToSpeechClient = new GoogleTextToSpeech.TextToSpeechClient();
 
 const queue = [];
@@ -52,13 +49,34 @@ const search = (query) => ytsearch(query, (searchError, result) => {
               });
             }
           });
-        })
-        .then((error) => console.error('error:', error));
+        });
     }
   }
 });
 
 const skip = () => { if (dispatcher) dispatcher.end(); };
+
+const detector = new Detector(
+  './lib/native-voice-command-detector/deps/Porcupine/lib/common/porcupine_params.pv',
+  './lib/native-voice-command-detector/deps/Porcupine/resources/keyword_files/linux/terminator_linux.ppn',
+  0.5,
+  'AIzaSyCzjvCjsoBPyEf9jG7luPW4p5791im_kj8',
+  200,
+  3000,
+  1000,
+  (id, command) => {
+    console.log('command:', command);
+    if (command.includes('play')) {
+      const split = command.split('play');
+      if (split[1]) search(split[1]);
+    } else if (command.includes('skip')) skip();
+    else if (command.includes('pause')) {
+      if (dispatcher) dispatcher.pause();
+    } else if (command.includes('resume')) {
+      if (dispatcher) dispatcher.resume();
+    }
+  },
+);
 
 discordClient.login(process.env.DISCORD_TOKEN);
 
@@ -74,35 +92,8 @@ discordClient
           connection.play(new Silence(), { type: 'opus' });
 
           connection.on('speaking', (user) => {
-            const audioStream = connection.receiver.createStream(user, { mode: 'pcm' });
-            const recognizeStream = googleSpeechClient
-              .streamingRecognize({
-                config: { encoding: 'LINEAR16', sampleRateHertz: 48000, languageCode: 'en-AU' },
-              })
-              .on('error', (error) => console.error('error:', error))
-              .on('data', (response) => {
-                const transcription = response.results
-                  .map((result) => result.alternatives[0].transcript)
-                  .join('\n')
-                  .toLowerCase();
-                console.log(user.username, transcription);
-
-                if (transcription.includes('ok discord')) {
-                  if (transcription.includes('play')) {
-                    const [, query] = transcription.split('play');
-                    search(query);
-                  } else if (transcription.includes('skip')) skip();
-                  else if (transcription.includes('pause')) {
-                    if (dispatcher) dispatcher.pause();
-                  } else if (transcription.includes('resume')) {
-                    if (dispatcher) dispatcher.resume();
-                  }
-                }
-              });
-
-            const convertTo1ChannelStream = new ConvertTo1ChannelStream();
-            const convertToWav = new ConvertToWav();
-            audioStream.pipe(convertToWav).pipe(recognizeStream);
+            const audioStream = connection.receiver.createStream(user);
+            audioStream.on('data', (buffer) => detector.addOpusFrame(user.id, buffer));
           });
         }
         break;

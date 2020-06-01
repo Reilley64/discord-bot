@@ -1,0 +1,3 @@
+[submodule "lib/native-voice-command-detector"]
+	path = lib/native-voice-command-detector
+	url = git@github.com:Vagr9K/native-voice-command-detector.git
