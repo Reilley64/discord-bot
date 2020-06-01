@@ -3,18 +3,19 @@ require('dotenv').config();
 const GoogleTextToSpeech = require('@google-cloud/text-to-speech');
 const Discord = require('discord.js');
 const fs = require('fs');
+const { google } = require('googleapis');
 const ytdl = require('ytdl-core');
-const ytsearch = require('yt-search');
 const Detector = require('./lib/native-voice-command-detector');
 const Silence = require('./classes/Silence');
 
 const discordClient = new Discord.Client();
-const messageChannel = discordClient.channels.fetch('420569066827284481');
 const googleTextToSpeechClient = new GoogleTextToSpeech.TextToSpeechClient();
+const youtube = google.youtube({ version: 'v3', auth: process.env.GOOGLE_API_KEY });
 
 const queue = [];
 
 let connection;
+let messageChannel;
 let dispatcher;
 
 const play = () => {
@@ -30,32 +31,41 @@ const play = () => {
   queue.shift();
 };
 
-const search = (query) => ytsearch(query, (searchError, result) => {
-  if (searchError) console.error('error:', searchError);
-  else if (result.videos && result.videos[0]) {
-    queue.push({ title: result.videos[0].title, url: result.videos[0].url });
-    if (!dispatcher) {
-      googleTextToSpeechClient.synthesizeSpeech({
-        input: { text: `ok, playing ${result.videos[0].title}` },
-        voice: { languageCode: 'en-AU' },
-        audioConfig: { audioEncoding: 'MP3' },
-      })
-        .then((response) => {
-          fs.writeFile('output.mp3', response[0].audioContent, 'binary', (writeError) => {
-            if (writeError) console.error('error:', writeError);
-            else {
-              const textToSpeechDispatch = connection.play(`file:///${__dirname}/output.mp3`);
-              textToSpeechDispatch.on('finish', () => {
-                play();
-              });
-            }
+const search = (query) => youtube.search.list({
+  part: 'id, snippet',
+  q: query,
+})
+  .then((searchResponse) => {
+    if (searchResponse.data.items && searchResponse.data.items[0]) {
+      queue.push({
+        title: searchResponse.data.items[0].snippet.title,
+        url: `https://www.youtube.com/watch?v=${searchResponse.data.items[0].id.videoId}`,
+      });
+      if (!dispatcher) {
+        googleTextToSpeechClient.synthesizeSpeech({
+          input: { text: `ok, playing ${queue[0].title}` },
+          voice: { languageCode: 'en-AU' },
+          audioConfig: { audioEncoding: 'MP3' },
+        })
+          .then((textResponse) => {
+            fs.writeFile('output.mp3', textResponse[0].audioContent, 'binary', (writeError) => {
+              if (writeError) console.error('error:', writeError);
+              else {
+                const textToSpeechDispatch = connection.play(`file:///${__dirname}/output.mp3`);
+                textToSpeechDispatch.on('finish', () => {
+                  play();
+                });
+              }
+            });
           });
-        });
-    } else {
-      messageChannel.send(`${'```'}${result.videos[0].title} | ${result.videos[0].url} added to queue{'```'}`);
+      } else {
+        const botMessage = new Discord.MessageEmbed()
+          .setColor('#cb4b16')
+          .setDescription(`[${queue[0].title}](${queue[0].url}) added to queue`);
+        messageChannel.send(botMessage);
+      }
     }
-  }
-});
+  });
 
 const skip = () => { if (dispatcher) dispatcher.end(); };
 
@@ -63,7 +73,7 @@ const detector = new Detector(
   './lib/native-voice-command-detector/deps/Porcupine/lib/common/porcupine_params.pv',
   './lib/native-voice-command-detector/deps/Porcupine/resources/keyword_files/linux/terminator_linux.ppn',
   0.5,
-  'AIzaSyCzjvCjsoBPyEf9jG7luPW4p5791im_kj8',
+  process.env.GOOGLE_API_KEY,
   200,
   3000,
   1000,
@@ -84,7 +94,10 @@ const detector = new Detector(
 discordClient.login(process.env.DISCORD_TOKEN);
 
 discordClient
-  .on('ready', () => console.log('Bot online'))
+  .on('ready', () => {
+    messageChannel = discordClient.channels.cache.get('420569066827284481');
+    console.log('Bot online');
+  })
   .on('message', async (message) => {
     switch (message.content) {
       case '/join':
@@ -110,11 +123,14 @@ discordClient
         break;
 
       case '/queue':
-        let queueMessage = '```';
+        let queueMessage = '';
         if (queue.length < 1) queueMessage += 'No songs have been queued';
-        else for (const [i, song] of queue.entries()) queueMessage += `${i !== 0 ? '\n' : null}${song.title} | ${song.url}`;
-        queueMessage += '```';
-        message.channel.send(queueMessage);
+        else for (const [i, song] of queue.entries()) queueMessage += `${i !== 0 ? '\n' : ''}[${song.title}](${song.url})`;
+        const botMessage = new Discord.MessageEmbed()
+          .setColor('#cb4b16')
+          .setTitle('Queue')
+          .setDescription(queueMessage);
+        message.channel.send(botMessage);
         break;
 
       default:
