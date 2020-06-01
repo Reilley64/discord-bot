@@ -9,6 +9,7 @@ const Detector = require('./lib/native-voice-command-detector');
 const Silence = require('./classes/Silence');
 
 const discordClient = new Discord.Client();
+const messageChannel = discordClient.channels.fetch('420569066827284481');
 const googleTextToSpeechClient = new GoogleTextToSpeech.TextToSpeechClient();
 
 const queue = [];
@@ -24,7 +25,7 @@ const play = () => {
     else { dispatcher = null; }
   });
 
-  discordClient.user.setPresence({ activity: { name: queue[0].title, type: 'CUSTOM_STATUS' } });
+  discordClient.user.setPresence({ activity: { name: queue[0].title, type: 'PLAYING' } });
 
   queue.shift();
 };
@@ -50,6 +51,8 @@ const search = (query) => ytsearch(query, (searchError, result) => {
             }
           });
         });
+    } else {
+      messageChannel.send(`${'```'}${result.videos[0].title} | ${result.videos[0].url} added to queue{'```'}`);
     }
   }
 });
@@ -107,9 +110,10 @@ discordClient
         break;
 
       case '/queue':
-        let queueMessage = ' ';
-        if (queue.length < 1) queueMessage = 'No songs have been queued';
-        else for (const song of queue) queueMessage += `\n${song.title} | ${song.url}`;
+        let queueMessage = '```';
+        if (queue.length < 1) queueMessage += 'No songs have been queued';
+        else for (const [i, song] of queue.entries()) queueMessage += `${i !== 0 ? '\n' : null}${song.title} | ${song.url}`;
+        queueMessage += '```';
         message.channel.send(queueMessage);
         break;
 
