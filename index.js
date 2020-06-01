@@ -94,19 +94,15 @@ const detector = new Detector(
 discordClient.login(process.env.DISCORD_TOKEN);
 
 discordClient
-  .on('ready', () => {
-    messageChannel = discordClient.channels.cache.get('420569066827284481');
-    console.log('Bot online');
-  })
+  .on('ready', () => console.log('Bot online'))
   .on('message', async (message) => {
     switch (message.content) {
       case '/join':
         if (message.member.voice.channel) {
+          messageChannel = message.channel;
           connection = await message.member.voice.channel.join();
           console.log('Connected', connection.channel.name);
-
           connection.play(new Silence(), { type: 'opus' });
-
           connection.on('speaking', (user) => {
             const audioStream = connection.receiver.createStream(user);
             audioStream.on('data', (buffer) => detector.addOpusFrame(user.id, buffer));
