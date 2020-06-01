@@ -7,6 +7,7 @@ const fs = require('fs');
 const ytdl = require('ytdl-core');
 const ytsearch = require('yt-search');
 const ConvertTo1ChannelStream = require('./classes/ConvertTo1ChannelStream');
+const ConvertToWav = require('./classes/ConvertToWav');
 const Silence = require('./classes/Silence');
 
 const discordClient = new Discord.Client();
@@ -100,7 +101,8 @@ discordClient
               });
 
             const convertTo1ChannelStream = new ConvertTo1ChannelStream();
-            audioStream.pipe(convertTo1ChannelStream).pipe(recognizeStream);
+            const convertToWav = new ConvertToWav();
+            audioStream.pipe(convertToWav).pipe(recognizeStream);
           });
         }
         break;
