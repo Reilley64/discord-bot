@@ -33,7 +33,9 @@ const play = () => {
 
 const search = (query) => youtube.search.list({
   part: 'id, snippet',
+  maxResults: 1,
   q: query,
+  type: 'video',
 })
   .then((searchResponse) => {
     if (searchResponse.data.items && searchResponse.data.items[0]) {
