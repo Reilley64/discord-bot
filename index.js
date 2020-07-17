@@ -18,10 +18,20 @@ let connection;
 let messageChannel;
 let dispatcher;
 
+const skip = () => {
+  if (dispatcher) dispatcher.end();
+};
+
 const play = () => {
   dispatcher = connection.play(ytdl(queue[0].url, { filter: 'audioonly', highWaterMark: 1 << 25 }));
 
+  dispatcher.on('error', (error) => {
+    skip();
+    console.error('error:', error);
+  });
+
   dispatcher.on('finish', () => {
+    discordClient.user.setActivity(null);
     if (queue.length > 0) play();
     else { dispatcher = null; }
   });
@@ -69,8 +79,6 @@ const search = (query) => youtube.search.list({
     }
   });
 
-const skip = () => { if (dispatcher) dispatcher.end(); };
-
 const detector = new Detector(
   './lib/native-voice-command-detector/deps/Porcupine/lib/common/porcupine_params.pv',
   './lib/native-voice-command-detector/deps/Porcupine/resources/keyword_files/linux/terminator_linux.ppn',
@@ -106,8 +114,10 @@ discordClient
           console.log('Connected', connection.channel.name);
           connection.play(new Silence(), { type: 'opus' });
           connection.on('speaking', (user) => {
-            const audioStream = connection.receiver.createStream(user);
-            audioStream.on('data', (buffer) => detector.addOpusFrame(user.id, buffer));
+            if (user) {
+              const audioStream = connection.receiver.createStream(user);
+              audioStream.on('data', (buffer) => detector.addOpusFrame(user.id, buffer));
+            }
           });
         }
         break;
