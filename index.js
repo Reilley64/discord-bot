@@ -151,7 +151,6 @@ discordClient
             }
           }
         }
-
         break;
     }
   });

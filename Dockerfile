@@ -19,6 +19,9 @@ WORKDIR /usr/src/app
 
 COPY package.json ./
 RUN yarn install
-COPY . .
+COPY lib lib
+COPY classes classes
+COPY google-credentials.json .
+COPY index.js .
 
-CMD [ "node", "index.js" ]
+ENTRYPOINT [ "node", "index.js" ]
